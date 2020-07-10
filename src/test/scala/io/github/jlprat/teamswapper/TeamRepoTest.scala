@@ -13,11 +13,11 @@ class TeamRepoTest extends AnyFlatSpec with Matchers {
     val newTeamMsg = TeamRepo.NewTeam("A", 4, inbox.ref)
     repoBehavior.run(newTeamMsg)
 
-    inbox.expectMessage(TeamRepo.Created(TeamRepo.Team("A", 4)))
+    inbox.expectMessage(TeamRepo.Created(Team("A", 4)))
   }
 
   it should "accept team creation message if the team already exists and has same capacity" in {
-    val team = TeamRepo.Team("A", 3)
+    val team = Team("A", 3)
     val repoBehavior = BehaviorTestKit(TeamRepo(Map(team.name -> team)))
     val inbox = TestInbox[TeamRepo.TeamRepoResponses]()
     val newTeamMsg = TeamRepo.NewTeam(team.name, team.capacity, inbox.ref)
@@ -27,7 +27,7 @@ class TeamRepoTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject creation if the team already exists but differs in capacity" in {
-    val team = TeamRepo.Team("A", 3)
+    val team = Team("A", 3)
     val repoBehavior = BehaviorTestKit(TeamRepo(Map(team.name -> team)))
     val inbox = TestInbox[TeamRepo.TeamRepoResponses]()
     val newTeamMsg = TeamRepo.NewTeam(team.name, team.capacity + 3, inbox.ref)
@@ -37,17 +37,17 @@ class TeamRepoTest extends AnyFlatSpec with Matchers {
   }
 
   it should "update existing teams" in {
-    val team = TeamRepo.Team("A", 3)
+    val team = Team("A", 3)
     val repoBehavior = BehaviorTestKit(TeamRepo(Map(team.name -> team)))
     val inbox = TestInbox[TeamRepo.TeamRepoResponses]()
     val updateTeam = TeamRepo.UpdateTeam(team.name, team.capacity + 3, inbox.ref)
     repoBehavior.run(updateTeam)
 
-    inbox.expectMessage(TeamRepo.Updated(TeamRepo.Team(team.name, team.capacity + 3)))
+    inbox.expectMessage(TeamRepo.Updated(Team(team.name, team.capacity + 3)))
   }
 
   it should "reject updating non existing teams" in {
-    val team = TeamRepo.Team("A", 3)
+    val team = Team("A", 3)
     val repoBehavior = BehaviorTestKit(TeamRepo())
     val inbox = TestInbox[TeamRepo.TeamRepoResponses]()
     val newTeamMsg = TeamRepo.UpdateTeam(team.name, team.capacity, inbox.ref)
@@ -65,8 +65,8 @@ class TeamRepoTest extends AnyFlatSpec with Matchers {
   }
 
   it should "list all teams" in {
-    val teamA = TeamRepo.Team("A", 3)
-    val teamB = TeamRepo.Team("B", 3)
+    val teamA = Team("A", 3)
+    val teamB = Team("B", 3)
     val repoBehavior = BehaviorTestKit(TeamRepo(Map(teamA.name -> teamA, teamB.name -> teamB)))
     val inbox = TestInbox[TeamRepo.TeamRepoResponses]()
     repoBehavior.run(TeamRepo.ListTeams(inbox.ref))
@@ -75,13 +75,13 @@ class TeamRepoTest extends AnyFlatSpec with Matchers {
   }
 
   it should "create and list teams" in {
-    val team = TeamRepo.Team("A", 4)
+    val team = Team("A", 4)
     val repoBehavior = BehaviorTestKit(TeamRepo())
     val inbox = TestInbox[TeamRepo.TeamRepoResponses]()
     val newTeamMsg = TeamRepo.NewTeam(team.name, team.capacity, inbox.ref)
     repoBehavior.run(newTeamMsg)
 
-    inbox.expectMessage(TeamRepo.Created(TeamRepo.Team("A", 4)))
+    inbox.expectMessage(TeamRepo.Created(Team("A", 4)))
 
     repoBehavior.run(TeamRepo.ListTeams(inbox.ref))
 

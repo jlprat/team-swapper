@@ -9,10 +9,10 @@ object TeamMembershipRepo {
   case class Member(id: String, name: String)
 
   sealed trait TeamMembershipActions
-  case class JoinTeam(team: TeamRepo.Team, member: Member, replyTo: ActorRef[TeamMembershipResponses]) extends TeamMembershipActions
-  case class LeaveTeam(team: TeamRepo.Team, member: Member, replyTo: ActorRef[TeamMembershipResponses]) extends TeamMembershipActions
+  case class JoinTeam(team: Team, member: Member, replyTo: ActorRef[TeamMembershipResponses]) extends TeamMembershipActions
+  case class LeaveTeam(team: Team, member: Member, replyTo: ActorRef[TeamMembershipResponses]) extends TeamMembershipActions
   
-  case class IsMember(team: TeamRepo.Team, member: Member, replyTo: ActorRef[TeamMembershipResponses]) extends TeamMembershipActions
+  case class IsMember(team: Team, member: Member, replyTo: ActorRef[TeamMembershipResponses]) extends TeamMembershipActions
 
   sealed trait TeamMembershipResponses
   case object Joined extends TeamMembershipResponses

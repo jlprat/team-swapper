@@ -19,8 +19,6 @@ object TeamRepo {
       replyTo: ActorRef[TeamRepoResponses]
   ) extends TeamRepoActions
 
-  case class Team(name: String, capacity: Int)
-
   sealed trait TeamRepoResponses
   case class Failure(reason: String) extends TeamRepoResponses
   case class Created(team: Team) extends TeamRepoResponses

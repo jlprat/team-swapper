@@ -8,7 +8,7 @@ import akka.actor.testkit.typed.scaladsl.TestInbox
 class TeamMembershipRepoTest extends AnyFlatSpec with Matchers {
 
     "TeamMembershipRepo" should "acccept memberships if team is new" in {
-        val team = TeamRepo.Team("A", 3)
+        val team = Team("A", 3)
         val member = TeamMembershipRepo.Member("12k", "Alice")
         val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo())
         val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
@@ -18,7 +18,7 @@ class TeamMembershipRepoTest extends AnyFlatSpec with Matchers {
     }
 
     it should "acccept memberships if team is already there" in {
-        val team = TeamRepo.Team("A", 3)
+        val team = Team("A", 3)
         val member1 = TeamMembershipRepo.Member("12k", "Alice")
         val member2 = TeamMembershipRepo.Member("124k", "Bob")
         val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
@@ -29,7 +29,7 @@ class TeamMembershipRepoTest extends AnyFlatSpec with Matchers {
     }
 
     it should "reject a request to join if team is already full" in {
-        val team = TeamRepo.Team("A", 1)
+        val team = Team("A", 1)
         val member1 = TeamMembershipRepo.Member("12k", "Alice")
         val member2 = TeamMembershipRepo.Member("124k", "Bob")
         val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
@@ -40,7 +40,7 @@ class TeamMembershipRepoTest extends AnyFlatSpec with Matchers {
     }
 
     it should "accept leave request from team members" in {
-        val team = TeamRepo.Team("A", 3)
+        val team = Team("A", 3)
         val member = TeamMembershipRepo.Member("12k", "Alice")
         val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member))))
         val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
@@ -51,7 +51,7 @@ class TeamMembershipRepoTest extends AnyFlatSpec with Matchers {
 
 
     it should "reject leave request from non team members" in {
-        val team = TeamRepo.Team("A", 3)
+        val team = Team("A", 3)
         val member1 = TeamMembershipRepo.Member("12k", "Alice")
         val member2 = TeamMembershipRepo.Member("11k", "Bob")
         val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
@@ -62,7 +62,7 @@ class TeamMembershipRepoTest extends AnyFlatSpec with Matchers {
     }
 
     it should "reply with membership of team members" in {
-        val team = TeamRepo.Team("A", 3)
+        val team = Team("A", 3)
         val member1 = TeamMembershipRepo.Member("12k", "Alice")
         val member2 = TeamMembershipRepo.Member("11k", "Bob")
         val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
