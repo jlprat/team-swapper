@@ -50,7 +50,7 @@ object TeamRepo {
         replyTo ! Teams(teams.values.toSet)
         Behaviors.same
       case GetTeam(name, replyTo) =>
-        replyTo ! teams.get(name).map(name => Present(name)).getOrElse(Failure(s"No team with this name: $name"))
+        replyTo ! teams.get(name).map(team => Present(team)).getOrElse(Failure(s"No team with this name: $name"))
         Behaviors.same
     }
 
