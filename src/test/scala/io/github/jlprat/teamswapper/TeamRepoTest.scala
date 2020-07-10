@@ -81,10 +81,19 @@ class TeamRepoTest extends AnyFlatSpec with Matchers {
     val newTeamMsg = TeamRepo.NewTeam(team.name, team.capacity, inbox.ref)
     repoBehavior.run(newTeamMsg)
 
-    inbox.expectMessage(TeamRepo.Created(Team("A", 4)))
+    inbox.expectMessage(TeamRepo.Created(team))
 
     repoBehavior.run(TeamRepo.ListTeams(inbox.ref))
 
     inbox.expectMessage(TeamRepo.Teams(Set(team)))
+  }
+
+  it should "be able to get a specific team" in {
+    val team = Team("A", 4)
+    val repoBehavior = BehaviorTestKit(TeamRepo(Map(team.name -> team)))
+    val inbox = TestInbox[TeamRepo.TeamRepoResponses]()
+    repoBehavior.run(TeamRepo.GetTeam(team.name, inbox.ref))
+
+    inbox.expectMessage(TeamRepo.Present(team))
   }
 }
