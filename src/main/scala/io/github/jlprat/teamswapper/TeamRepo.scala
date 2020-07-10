@@ -2,7 +2,7 @@ package io.github.jlprat.teamswapper
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
-import akka.actor.typed.javadsl.Behaviors
+import akka.actor.typed.scaladsl.Behaviors
 object TeamRepo {
 
   sealed trait TeamRepoActions
