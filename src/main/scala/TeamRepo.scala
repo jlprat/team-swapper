@@ -1,3 +1,5 @@
+package io.github.jlprat.teamswapper
+
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.Behaviors
@@ -23,7 +25,7 @@ object TeamRepo {
   case class Failure(reason: String) extends TeamRepoResponses
   case class Created(team: Team) extends TeamRepoResponses
   case class Updated(team: Team) extends TeamRepoResponses
-  case class Teams(teams: Seq[Team]) extends TeamRepoResponses
+  case class Teams(teams: Set[Team]) extends TeamRepoResponses
 
 
   def apply(teams: Map[String, Team] = Map.empty): Behavior[TeamRepoActions] = Behaviors.receiveMessage {
@@ -37,7 +39,16 @@ object TeamRepo {
         val team = Team(name, capacity)
         replyTo ! Created(team)
         apply(teams.+(name -> team))
-    //TODO add the List and Update ones
+    case UpdateTeam(name, capacity, replyTo) if teams isDefinedAt(name) =>
+        val team = Team(name, capacity)
+        replyTo ! Updated(team)
+        apply(teams.updated(name, team))
+    case UpdateTeam(name, _, replyTo) =>
+        replyTo ! Failure(s"Team $name not present")
+        Behaviors.same
+    case ListTeams(replyTo) => 
+        replyTo ! Teams(teams.values.toSet)
+        Behaviors.same
   }
 
 }
