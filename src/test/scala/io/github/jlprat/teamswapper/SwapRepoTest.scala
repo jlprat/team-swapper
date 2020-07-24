@@ -14,7 +14,7 @@ class SwapRepoTest extends AnyFlatSpec with Matchers {
     val swapRepoBehavior = BehaviorTestKit(SwapRepo())
     val inbox            = TestInbox[SwapRepoResponses]()
 
-    swapRepoBehavior.run(SwapRequest(member, from, to, inbox.ref))
+    swapRepoBehavior.run(InternalSwapRequest(member, from, to, inbox.ref))
 
     inbox.expectMessage(Registered(SwapKey(from.name, to.name)))
   }
@@ -27,7 +27,7 @@ class SwapRepoTest extends AnyFlatSpec with Matchers {
     val swapRepoBehavior = BehaviorTestKit(SwapRepo(swapAttempts = Map(swapkey -> Set(member))))
     val inbox            = TestInbox[SwapRepoResponses]()
 
-    swapRepoBehavior.run(SwapRequest(member, from, to, inbox.ref))
+    swapRepoBehavior.run(InternalSwapRequest(member, from, to, inbox.ref))
 
     inbox.expectMessage(Registered(swapkey))
   }
@@ -41,7 +41,7 @@ class SwapRepoTest extends AnyFlatSpec with Matchers {
     val swapRepoBehavior = BehaviorTestKit(SwapRepo(swapAttempts = Map(swapkey -> Set(member1))))
     val inbox            = TestInbox[SwapRepoResponses]()
 
-    swapRepoBehavior.run(SwapRequest(member2, from, to, inbox.ref))
+    swapRepoBehavior.run(InternalSwapRequest(member2, from, to, inbox.ref))
 
     inbox.expectMessage(Registered(swapkey))
 
@@ -58,7 +58,7 @@ class SwapRepoTest extends AnyFlatSpec with Matchers {
     val swapRepoBehavior = BehaviorTestKit(SwapRepo(swapAttempts = Map(swapkey -> Set(member1))))
     val inbox            = TestInbox[SwapRepoResponses]()
 
-    swapRepoBehavior.run(SwapRequest(member2, to, from, inbox.ref))
+    swapRepoBehavior.run(InternalSwapRequest(member2, to, from, inbox.ref))
 
     inbox.expectMessage(Registered(SwapKey(to.name, from.name)))
 
@@ -81,5 +81,5 @@ class SwapRepoTest extends AnyFlatSpec with Matchers {
 
     swapRepoBehavior.run(GetSwaps(inbox.ref))
     inbox.expectMessage(Swaps(Set.empty))
-  }
+  }  
 }

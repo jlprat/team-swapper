@@ -6,8 +6,6 @@ import akka.actor.testkit.typed.scaladsl.BehaviorTestKit
 import akka.actor.testkit.typed.scaladsl.TestInbox
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import org.scalatest.BeforeAndAfterAll
-import akka.actor.typed.scaladsl.Behaviors
-import io.github.jlprat.teamswapper.TeamRepo.GetTeam
 
 class TeamMembershipRepoTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -87,27 +85,18 @@ class TeamMembershipRepoTest extends AnyFlatSpec with Matchers with BeforeAndAft
     val teamMembershipBehavior = testKit.spawn(TeamMembershipRepo(Map(team.name -> Set(member1))))
 
     val inbox = testKit.createTestProbe[TeamMembershipRepo.TeamMembershipResponses]()
-    val mockedTeamRepoBehavior = Behaviors.receiveMessage[TeamRepo.TeamRepoActions] {
-      case GetTeam(name, replyTo) if name == "A" =>
-        replyTo ! TeamRepo.Present(team)
-        Behaviors.same
-      case GetTeam(_, replyTo) =>
-        replyTo ! TeamRepo.Failure("Team not present")
-        Behaviors.same
-      case _ => Behaviors.same
-    }
-    val teamRepo       = testKit.createTestProbe[TeamRepo.TeamRepoActions]()
-    val mockedTeamRepo = testKit.spawn(Behaviors.monitor(teamRepo.ref, mockedTeamRepoBehavior))
+    val teamRepo = testKit.spawn(TeamRepo(Map(team.name -> team)))
+
     teamMembershipBehavior.tell(
-      TeamMembershipRepo.IsMember(team.name, member2, mockedTeamRepo, inbox.ref)
+      TeamMembershipRepo.IsMember(team.name, member2, teamRepo, inbox.ref)
     )
     inbox.expectMessage(TeamMembershipRepo.Member(false))
 
-    teamMembershipBehavior.tell(TeamMembershipRepo.IsMember(team.name, member1, mockedTeamRepo, inbox.ref))
+    teamMembershipBehavior.tell(TeamMembershipRepo.IsMember(team.name, member1, teamRepo, inbox.ref))
     inbox.expectMessage(TeamMembershipRepo.Member(true))
 
     teamMembershipBehavior.tell(
-      TeamMembershipRepo.IsMember("NOT EXISTING TEAM", member2, mockedTeamRepo, inbox.ref)
+      TeamMembershipRepo.IsMember("NOT EXISTING TEAM", member2, teamRepo, inbox.ref)
     )
     inbox.expectMessage(TeamMembershipRepo.Member(false))
   }

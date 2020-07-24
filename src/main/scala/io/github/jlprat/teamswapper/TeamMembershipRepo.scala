@@ -68,7 +68,7 @@ object TeamMembershipRepo {
             Ignore
         }
         Behaviors.same
-      case (_, IsMemberInt(team, member, replyTo)) if membership(team.name).contains(member) =>
+      case (_, IsMemberInt(team, member, replyTo)) if membership.withDefaultValue(Set.empty)(team.name).contains(member) =>
         replyTo ! Member(true)
         Behaviors.same
       case (_, IsMemberInt(_, _, replyTo)) =>
