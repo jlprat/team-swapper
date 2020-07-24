@@ -22,7 +22,7 @@ object SwapRepo {
   case class Swap(key: SwapKey, memberIdPair: (String, String))
 
   sealed trait SwapRepoActions
-  case class InternalSwapRequest(
+  private[behaviors] case class InternalSwapRequest(
       memberId: String,
       from: Team,
       to: Team,

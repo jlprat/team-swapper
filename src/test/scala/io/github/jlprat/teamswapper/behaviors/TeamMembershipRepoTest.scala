@@ -72,10 +72,10 @@ class TeamMembershipRepoTest extends AnyFlatSpec with Matchers with BeforeAndAft
     val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
     val inbox                  = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
 
-    teamMembershipBehavior.run(TeamMembershipRepo.IsMemberInt(team, member2, inbox.ref))
+    teamMembershipBehavior.run(TeamMembershipRepo.InternalIsMember(team, member2, inbox.ref))
     inbox.expectMessage(TeamMembershipRepo.Member(false))
 
-    teamMembershipBehavior.run(TeamMembershipRepo.IsMemberInt(team, member1, inbox.ref))
+    teamMembershipBehavior.run(TeamMembershipRepo.InternalIsMember(team, member1, inbox.ref))
     inbox.expectMessage(TeamMembershipRepo.Member(true))
   }
 

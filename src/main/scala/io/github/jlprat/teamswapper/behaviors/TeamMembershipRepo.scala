@@ -25,7 +25,7 @@ object TeamMembershipRepo {
       teamRepo: ActorRef[TeamRepoActions],
       replyTo: ActorRef[TeamMembershipResponses]
   ) extends TeamMembershipActions
-  private[teamswapper] case class IsMemberInt(
+  private[behaviors] case class InternalIsMember(
       team: Team,
       member: String,
       replyTo: ActorRef[TeamMembershipResponses]
@@ -66,17 +66,17 @@ object TeamMembershipRepo {
           teamRepo,
           ref => TeamRepo.GetTeam(teamId, ref)
         ) {
-          case Success(TeamRepo.Present(team)) => IsMemberInt(team, member, replyTo)
+          case Success(TeamRepo.Present(team)) => InternalIsMember(team, member, replyTo)
           case _ =>
             replyTo ! Member(false)
             Ignore
         }
         Behaviors.same
-      case (_, IsMemberInt(team, member, replyTo))
+      case (_, InternalIsMember(team, member, replyTo))
           if membership.withDefaultValue(Set.empty)(team.name).contains(member) =>
         replyTo ! Member(true)
         Behaviors.same
-      case (_, IsMemberInt(_, _, replyTo)) =>
+      case (_, InternalIsMember(_, _, replyTo)) =>
         replyTo ! Member(false)
         Behaviors.same
       case (_, Ignore) => Behaviors.same
