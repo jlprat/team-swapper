@@ -1,16 +1,18 @@
-package io.github.jlprat.teamswapper
+package io.github.jlprat.teamswapper.behaviors
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-import io.github.jlprat.teamswapper.SwapRepo.SwapRequest
-import io.github.jlprat.teamswapper.SwapRepo.SwapRepoResponses
-import io.github.jlprat.teamswapper.SwapRepo.Registered
-import io.github.jlprat.teamswapper.SwapRepo.SwapKey
-import io.github.jlprat.teamswapper.SwapRepo.Swaps
-import io.github.jlprat.teamswapper.SwapRepo.GetSwaps
-import io.github.jlprat.teamswapper.SwapRepo.Swap
-import io.github.jlprat.teamswapper.SwapRepo.Error
+import io.github.jlprat.teamswapper.behaviors.TeamRepo
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.SwapRequest
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.SwapRepoResponses
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.Registered
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.SwapKey
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.Swaps
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.GetSwaps
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.Swap
+import io.github.jlprat.teamswapper.behaviors.SwapRepo.Error
+import io.github.jlprat.teamswapper.Team
 
 class SwapRepoIT extends ScalaTestWithActorTestKit with AnyFlatSpecLike with Matchers {
   "SwapRepo" should "register a new swap" in {

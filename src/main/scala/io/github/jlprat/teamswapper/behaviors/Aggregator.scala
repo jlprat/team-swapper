@@ -1,4 +1,4 @@
-package io.github.jlprat.teamswapper
+package io.github.jlprat.teamswapper.behaviors
 
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration

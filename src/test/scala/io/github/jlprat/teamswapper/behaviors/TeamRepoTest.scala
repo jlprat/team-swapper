@@ -1,9 +1,10 @@
-package io.github.jlprat.teamswapper
+package io.github.jlprat.teamswapper.behaviors
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should._
 import akka.actor.testkit.typed.scaladsl.BehaviorTestKit
 import akka.actor.testkit.typed.scaladsl.TestInbox
+import io.github.jlprat.teamswapper.Team
 
 class TeamRepoTest extends AnyFlatSpec with Matchers {
 

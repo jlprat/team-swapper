@@ -1,14 +1,15 @@
-package io.github.jlprat.teamswapper
+package io.github.jlprat.teamswapper.behaviors
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.Behavior
-import io.github.jlprat.teamswapper.TeamMembershipRepo.TeamMembershipActions
-import io.github.jlprat.teamswapper.TeamMembershipRepo.Member
-import io.github.jlprat.teamswapper.TeamRepo.TeamRepoActions
-import io.github.jlprat.teamswapper.TeamMembershipRepo.IsMember
-import io.github.jlprat.teamswapper.TeamRepo.ListTeams
-import io.github.jlprat.teamswapper.TeamRepo.Teams
+import io.github.jlprat.teamswapper.behaviors.TeamMembershipRepo.TeamMembershipActions
+import io.github.jlprat.teamswapper.behaviors.TeamMembershipRepo.Member
+import io.github.jlprat.teamswapper.behaviors.TeamRepo.TeamRepoActions
+import io.github.jlprat.teamswapper.behaviors.TeamMembershipRepo.IsMember
+import io.github.jlprat.teamswapper.behaviors.TeamRepo.ListTeams
+import io.github.jlprat.teamswapper.behaviors.TeamRepo.Teams
+import io.github.jlprat.teamswapper.Team
 
 import scala.concurrent.duration._
 

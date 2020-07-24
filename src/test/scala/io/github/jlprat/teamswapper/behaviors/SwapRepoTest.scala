@@ -1,10 +1,11 @@
-package io.github.jlprat.teamswapper
+package io.github.jlprat.teamswapper.behaviors
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import akka.actor.testkit.typed.scaladsl.BehaviorTestKit
 import akka.actor.testkit.typed.scaladsl.TestInbox
-import io.github.jlprat.teamswapper.SwapRepo._
+import io.github.jlprat.teamswapper.behaviors.SwapRepo._
+import io.github.jlprat.teamswapper.Team
 
 class SwapRepoTest extends AnyFlatSpec with Matchers {
   "SwapRepo" should "register a new swap" in {

@@ -1,13 +1,14 @@
-package io.github.jlprat.teamswapper
+package io.github.jlprat.teamswapper.behaviors
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import io.github.jlprat.teamswapper.TeamRepo.TeamRepoActions
+import io.github.jlprat.teamswapper.behaviors.TeamRepo.TeamRepoActions
+import io.github.jlprat.teamswapper.behaviors.TeamRepo.TeamRepoResponses
+import io.github.jlprat.teamswapper.Team
 
 import scala.concurrent.duration._
 import akka.util.Timeout
-import io.github.jlprat.teamswapper.TeamRepo.TeamRepoResponses
 import scala.util.Success
 
 object TeamMembershipRepo {
@@ -24,8 +25,11 @@ object TeamMembershipRepo {
       teamRepo: ActorRef[TeamRepoActions],
       replyTo: ActorRef[TeamMembershipResponses]
   ) extends TeamMembershipActions
-  private[teamswapper] case class IsMemberInt(team: Team, member: String, replyTo: ActorRef[TeamMembershipResponses])
-      extends TeamMembershipActions
+  private[teamswapper] case class IsMemberInt(
+      team: Team,
+      member: String,
+      replyTo: ActorRef[TeamMembershipResponses]
+  ) extends TeamMembershipActions
 
   case object Ignore extends TeamMembershipActions
 
@@ -68,7 +72,8 @@ object TeamMembershipRepo {
             Ignore
         }
         Behaviors.same
-      case (_, IsMemberInt(team, member, replyTo)) if membership.withDefaultValue(Set.empty)(team.name).contains(member) =>
+      case (_, IsMemberInt(team, member, replyTo))
+          if membership.withDefaultValue(Set.empty)(team.name).contains(member) =>
         replyTo ! Member(true)
         Behaviors.same
       case (_, IsMemberInt(_, _, replyTo)) =>
