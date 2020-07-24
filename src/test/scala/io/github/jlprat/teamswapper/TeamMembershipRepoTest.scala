@@ -4,74 +4,113 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should._
 import akka.actor.testkit.typed.scaladsl.BehaviorTestKit
 import akka.actor.testkit.typed.scaladsl.TestInbox
+import akka.actor.testkit.typed.scaladsl.ActorTestKit
+import org.scalatest.BeforeAndAfterAll
+import akka.actor.typed.scaladsl.Behaviors
+import io.github.jlprat.teamswapper.TeamRepo.GetTeam
 
-class TeamMembershipRepoTest extends AnyFlatSpec with Matchers {
+class TeamMembershipRepoTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-    "TeamMembershipRepo" should "acccept memberships if team is new" in {
-        val team = Team("A", 3)
-        val member = "12k"
-        val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo())
-        val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
-        teamMembershipBehavior.run(TeamMembershipRepo.JoinTeam(team, member, inbox.ref))
+  val testKit = ActorTestKit()
 
-        inbox.expectMessage(TeamMembershipRepo.Joined)
+  "TeamMembershipRepo" should "acccept memberships if team is new" in {
+    val team                   = Team("A", 3)
+    val member                 = "12k"
+    val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo())
+    val inbox                  = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
+    teamMembershipBehavior.run(TeamMembershipRepo.JoinTeam(team, member, inbox.ref))
+
+    inbox.expectMessage(TeamMembershipRepo.Joined)
+  }
+
+  it should "acccept memberships if team is already there" in {
+    val team                   = Team("A", 3)
+    val member1                = "12k"
+    val member2                = "124k"
+    val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
+    val inbox                  = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
+    teamMembershipBehavior.run(TeamMembershipRepo.JoinTeam(team, member2, inbox.ref))
+
+    inbox.expectMessage(TeamMembershipRepo.Joined)
+  }
+
+  it should "reject a request to join if team is already full" in {
+    val team                   = Team("A", 1)
+    val member1                = "12k"
+    val member2                = "124k"
+    val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
+    val inbox                  = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
+    teamMembershipBehavior.run(TeamMembershipRepo.JoinTeam(team, member2, inbox.ref))
+
+    inbox.expectMessage(TeamMembershipRepo.TeamFull)
+  }
+
+  it should "accept leave request from team members" in {
+    val team                   = Team("A", 3)
+    val member                 = "12k"
+    val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member))))
+    val inbox                  = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
+    teamMembershipBehavior.run(TeamMembershipRepo.LeaveTeam(team, member, inbox.ref))
+
+    inbox.expectMessage(TeamMembershipRepo.Left)
+  }
+
+  it should "reject leave request from non team members" in {
+    val team                   = Team("A", 3)
+    val member1                = "12k"
+    val member2                = "11k"
+    val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
+    val inbox                  = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
+    teamMembershipBehavior.run(TeamMembershipRepo.LeaveTeam(team, member2, inbox.ref))
+
+    inbox.expectMessage(TeamMembershipRepo.Member(false))
+  }
+
+  it should "reply with membership of team members once the team is retrieved" in {
+    val team                   = Team("A", 3)
+    val member1                = "12k"
+    val member2                = "11k"
+    val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
+    val inbox                  = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
+
+    teamMembershipBehavior.run(TeamMembershipRepo.IsMemberInt(team, member2, inbox.ref))
+    inbox.expectMessage(TeamMembershipRepo.Member(false))
+
+    teamMembershipBehavior.run(TeamMembershipRepo.IsMemberInt(team, member1, inbox.ref))
+    inbox.expectMessage(TeamMembershipRepo.Member(true))
+  }
+
+  it should "reply with membership of team members" in {
+    val team                   = Team("A", 3)
+    val member1                = "12k"
+    val member2                = "11k"
+    val teamMembershipBehavior = testKit.spawn(TeamMembershipRepo(Map(team.name -> Set(member1))))
+
+    val inbox = testKit.createTestProbe[TeamMembershipRepo.TeamMembershipResponses]()
+    val mockedTeamRepoBehavior = Behaviors.receiveMessage[TeamRepo.TeamRepoActions] {
+      case GetTeam(name, replyTo) if name == "A" =>
+        replyTo ! TeamRepo.Present(team)
+        Behaviors.same
+      case GetTeam(_, replyTo) =>
+        replyTo ! TeamRepo.Failure("Team not present")
+        Behaviors.same
+      case _ => Behaviors.same
     }
+    val teamRepo       = testKit.createTestProbe[TeamRepo.TeamRepoActions]()
+    val mockedTeamRepo = testKit.spawn(Behaviors.monitor(teamRepo.ref, mockedTeamRepoBehavior))
+    teamMembershipBehavior.tell(
+      TeamMembershipRepo.IsMember(team.name, member2, mockedTeamRepo, inbox.ref)
+    )
+    inbox.expectMessage(TeamMembershipRepo.Member(false))
 
-    it should "acccept memberships if team is already there" in {
-        val team = Team("A", 3)
-        val member1 = "12k"
-        val member2 = "124k"
-        val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
-        val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
-        teamMembershipBehavior.run(TeamMembershipRepo.JoinTeam(team, member2, inbox.ref))
+    teamMembershipBehavior.tell(TeamMembershipRepo.IsMember(team.name, member1, mockedTeamRepo, inbox.ref))
+    inbox.expectMessage(TeamMembershipRepo.Member(true))
 
-        inbox.expectMessage(TeamMembershipRepo.Joined)
-    }
+    teamMembershipBehavior.tell(
+      TeamMembershipRepo.IsMember("NOT EXISTING TEAM", member2, mockedTeamRepo, inbox.ref)
+    )
+    inbox.expectMessage(TeamMembershipRepo.Member(false))
+  }
 
-    it should "reject a request to join if team is already full" in {
-        val team = Team("A", 1)
-        val member1 = "12k"
-        val member2 = "124k"
-        val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
-        val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
-        teamMembershipBehavior.run(TeamMembershipRepo.JoinTeam(team, member2, inbox.ref))
-
-        inbox.expectMessage(TeamMembershipRepo.TeamFull)
-    }
-
-    it should "accept leave request from team members" in {
-        val team = Team("A", 3)
-        val member = "12k"
-        val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member))))
-        val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
-        teamMembershipBehavior.run(TeamMembershipRepo.LeaveTeam(team, member, inbox.ref))
-
-        inbox.expectMessage(TeamMembershipRepo.Left)
-    }
-
-
-    it should "reject leave request from non team members" in {
-        val team = Team("A", 3)
-        val member1 = "12k"
-        val member2 = "11k"
-        val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
-        val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
-        teamMembershipBehavior.run(TeamMembershipRepo.LeaveTeam(team, member2, inbox.ref))
-
-        inbox.expectMessage(TeamMembershipRepo.Member(false))
-    }
-
-    it should "reply with membership of team members" in {
-        val team = Team("A", 3)
-        val member1 = "12k"
-        val member2 = "11k"
-        val teamMembershipBehavior = BehaviorTestKit(TeamMembershipRepo(Map(team.name -> Set(member1))))
-        val inbox = TestInbox[TeamMembershipRepo.TeamMembershipResponses]()
-        
-        teamMembershipBehavior.run(TeamMembershipRepo.IsMember(team, member2, inbox.ref))
-        inbox.expectMessage(TeamMembershipRepo.Member(false))
-
-        teamMembershipBehavior.run(TeamMembershipRepo.IsMember(team, member1, inbox.ref))
-        inbox.expectMessage(TeamMembershipRepo.Member(true))
-    }
+  override def afterAll(): Unit = testKit.shutdownTestKit()
 }
