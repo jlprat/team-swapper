@@ -81,7 +81,8 @@ object TeamBehavior {
           replyTo.tell(breadcrumbs)
           Behaviors.same
         case Probe(_, breadcrumbs, _) if breadcrumbs.exists(_.from.name == ctx.self.path.name) =>
-          //We found an inner circle, this path will only loop infinitely
+          //We found an inner loop, this path will only loop infinitely
+          ctx.log.info("Found an inner loop, breaking!")
           Behaviors.same
         case Probe(originalTeam, breadcrumbs, replyTo) =>
           //On the look for a loop

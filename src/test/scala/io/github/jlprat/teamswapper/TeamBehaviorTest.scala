@@ -1,20 +1,23 @@
 package io.github.jlprat.teamswapper
 
+import scala.concurrent.duration._
+
+import akka.actor.testkit.typed.scaladsl.LoggingTestKit
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.AddTeamMember
+import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Command
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Error
+import io.github.jlprat.teamswapper.behaviors.TeamBehavior.FindSwaps
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.OK
+import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RemoveTeamMember
+import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RequestChange
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Response
+import io.github.jlprat.teamswapper.domain.Swap
+import io.github.jlprat.teamswapper.domain.Team
 import io.github.jlprat.teamswapper.domain.TeamMember
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RemoveTeamMember
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RequestChange
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Command
-import io.github.jlprat.teamswapper.domain.Swap
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.FindSwaps
-import io.github.jlprat.teamswapper.domain.Team
 
 class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike with Matchers {
 
@@ -159,4 +162,111 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     testKit.stop(teamCBehavior)
   }
 
+  it should "not loop infinitely" in {
+    //Bob wants to move to either A or D
+    //Charlie wants to move to C
+    //Alice wants to move to B
+    //Bob wants to move to A
+    // Starting on team C, we should find an infinite loop between teams A and B
+    val alice         = TeamMember("Alice", "Abbot")
+    val bob           = TeamMember("Bob", "Burger")
+    val charlie       = TeamMember("Charlie", "Cake")
+    val dave          = TeamMember("Dave", "Dinner")
+    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
+    val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
+    val teamDBehavior = testKit.spawn(TeamBehavior(1, Set(dave)), "Team-D")
+    val probe         = testKit.createTestProbe[Response]()
+    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+
+    teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamBBehavior.tell(RequestChange(bob, teamABehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamCBehavior.tell(RequestChange(charlie, teamABehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamCBehavior.tell(RequestChange(charlie, teamDBehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamDBehavior.tell(RequestChange(dave, teamCBehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    val teamC = Team("Team-C")
+    val teamD = Team("Team-D")
+    LoggingTestKit.info("Found an inner loop, breaking!").expect {
+      teamCBehavior.tell(FindSwaps(swapProbe.ref))
+    }
+    swapProbe.expectMessage(
+      Seq(Swap(charlie, teamC, teamD), Swap(dave, teamD, teamC))
+    )
+
+    testKit.stop(teamABehavior)
+    testKit.stop(teamBBehavior)
+    testKit.stop(teamCBehavior)
+    testKit.stop(teamDBehavior)
+  }
+
+  it should "find multiple swaps when they exist" in {
+    val alice         = TeamMember("Alice", "Abbot")
+    val bob           = TeamMember("Bob", "Burger")
+    val charlie       = TeamMember("Charlie", "Cake")
+    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
+    val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
+    val probe         = testKit.createTestProbe[Response]()
+    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+
+    teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+    teamABehavior.tell(RequestChange(alice, teamCBehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamBBehavior.tell(RequestChange(bob, teamABehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamCBehavior.tell(RequestChange(charlie, teamABehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    val teamA = Team("Team-A")
+    val teamB = Team("Team-B")
+    val teamC = Team("Team-C")
+    teamABehavior.tell(FindSwaps(swapProbe.ref))
+    val allSwaps = swapProbe.receiveMessages(2)
+
+    allSwaps should contain theSameElementsAs Seq(
+      Seq(Swap(alice, teamA, teamB), Swap(bob, teamB, teamA)),
+      Seq(Swap(alice, teamA, teamC), Swap(charlie, teamC, teamA))
+    )
+
+    testKit.stop(teamABehavior)
+    testKit.stop(teamBBehavior)
+    testKit.stop(teamCBehavior)
+  }
+
+  it should "not find any swaps if there aren't any" in {
+    val alice         = TeamMember("Alice", "Abbot")
+    val bob           = TeamMember("Bob", "Burger")
+    val charlie       = TeamMember("Charlie", "Cake")
+    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
+    val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
+    val probe         = testKit.createTestProbe[Response]()
+    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+
+    teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamBBehavior.tell(RequestChange(bob, teamCBehavior.ref, probe.ref))
+    probe.expectMessage(OK)
+
+    teamABehavior.tell(FindSwaps(swapProbe.ref))
+    swapProbe.expectNoMessage(1.second)
+
+    testKit.stop(teamABehavior)
+    testKit.stop(teamBBehavior)
+    testKit.stop(teamCBehavior)
+  }
 }
