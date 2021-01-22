@@ -13,6 +13,7 @@ lazy val teamSwapper = (project in file("."))
       akkaStream,
       akkaHttp,
       sprayJson,
+      logback,
       scalaTest % Test,
       actorTestkitTyped % Test,
       akkaHttpTestkit % Test
