@@ -1,4 +1,4 @@
-package io.github.jlprat.teamswapper
+package io.github.jlprat.teamswapper.behaviors
 
 import scala.concurrent.duration._
 
@@ -7,13 +7,13 @@ import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.AddTeamMember
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Command
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Error
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.FindSwaps
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.OK
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RemoveTeamMember
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RequestChange
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Response
-import io.github.jlprat.teamswapper.domain.Swap
+import io.github.jlprat.teamswapper.domain.GeneralProtocol.Error
+import io.github.jlprat.teamswapper.domain.GeneralProtocol.OK
+import io.github.jlprat.teamswapper.domain.GeneralProtocol.Response
+import io.github.jlprat.teamswapper.domain.Move
 import io.github.jlprat.teamswapper.domain.Team
 import io.github.jlprat.teamswapper.domain.TeamMember
 import org.scalatest.flatspec.AnyFlatSpecLike
@@ -113,7 +113,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
     val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
     val probe         = testKit.createTestProbe[Response]()
-    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+    val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
     teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
     probe.expectMessage(OK)
@@ -124,7 +124,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val teamA = Team("Team-A")
     val teamB = Team("Team-B")
     teamABehavior.tell(FindSwaps(swapProbe.ref))
-    swapProbe.expectMessage(Seq(Swap(alice, teamA, teamB), Swap(bob, teamB, teamA)))
+    swapProbe.expectMessage(Seq(Move(alice, teamA, teamB), Move(bob, teamB, teamA)))
 
     testKit.stop(teamABehavior)
     testKit.stop(teamBBehavior)
@@ -138,7 +138,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
     val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
     val probe         = testKit.createTestProbe[Response]()
-    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+    val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
     teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
     probe.expectMessage(OK)
@@ -154,7 +154,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val teamC = Team("Team-C")
     teamABehavior.tell(FindSwaps(swapProbe.ref))
     swapProbe.expectMessage(
-      Seq(Swap(alice, teamA, teamB), Swap(bob, teamB, teamC), Swap(charlie, teamC, teamA))
+      Seq(Move(alice, teamA, teamB), Move(bob, teamB, teamC), Move(charlie, teamC, teamA))
     )
 
     testKit.stop(teamABehavior)
@@ -177,7 +177,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
     val teamDBehavior = testKit.spawn(TeamBehavior(1, Set(dave)), "Team-D")
     val probe         = testKit.createTestProbe[Response]()
-    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+    val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
     teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
     probe.expectMessage(OK)
@@ -200,7 +200,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
       teamCBehavior.tell(FindSwaps(swapProbe.ref))
     }
     swapProbe.expectMessage(
-      Seq(Swap(charlie, teamC, teamD), Swap(dave, teamD, teamC))
+      Seq(Move(charlie, teamC, teamD), Move(dave, teamD, teamC))
     )
 
     testKit.stop(teamABehavior)
@@ -217,7 +217,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
     val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
     val probe         = testKit.createTestProbe[Response]()
-    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+    val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
     teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
     probe.expectMessage(OK)
@@ -237,8 +237,8 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val allSwaps = swapProbe.receiveMessages(2)
 
     allSwaps should contain theSameElementsAs Seq(
-      Seq(Swap(alice, teamA, teamB), Swap(bob, teamB, teamA)),
-      Seq(Swap(alice, teamA, teamC), Swap(charlie, teamC, teamA))
+      Seq(Move(alice, teamA, teamB), Move(bob, teamB, teamA)),
+      Seq(Move(alice, teamA, teamC), Move(charlie, teamC, teamA))
     )
 
     testKit.stop(teamABehavior)
@@ -254,7 +254,7 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
     val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
     val probe         = testKit.createTestProbe[Response]()
-    val swapProbe     = testKit.createTestProbe[Seq[Swap]]()
+    val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
     teamABehavior.tell(RequestChange(alice, teamBBehavior.ref, probe.ref))
     probe.expectMessage(OK)

@@ -3,16 +3,13 @@ package io.github.jlprat.teamswapper.behaviors
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import io.github.jlprat.teamswapper.domain.Swap
+import io.github.jlprat.teamswapper.domain.Move
 import io.github.jlprat.teamswapper.domain.Team
 import io.github.jlprat.teamswapper.domain.TeamMember
+import io.github.jlprat.teamswapper.domain.GeneralProtocol._
 
 //TODO think about splitting this in 2 actors, one for the team members and the other for swaps
 object TeamBehavior {
-
-  sealed trait Response
-  final case object OK                extends Response
-  final case class Error(msg: String) extends Response
 
   sealed trait Command
   final case class AddTeamMember(teamMember: TeamMember, replyTo: ActorRef[Response])
@@ -24,11 +21,11 @@ object TeamBehavior {
       to: ActorRef[Command],
       replyTo: ActorRef[Response]
   )                                                        extends Command
-  final case class FindSwaps(replyTo: ActorRef[Seq[Swap]]) extends Command
+  final case class FindSwaps(replyTo: ActorRef[Seq[Move]]) extends Command
   private final case class Probe(
       originalTeam: ActorRef[Command],
-      breadcrumbs: Seq[Swap],
-      replyTo: ActorRef[Seq[Swap]]
+      breadcrumbs: Seq[Move],
+      replyTo: ActorRef[Seq[Move]]
   ) extends Command
 
   final case class Request(teamMember: TeamMember, to: ActorRef[Command])
@@ -70,7 +67,7 @@ object TeamBehavior {
             request.to.tell(
               Probe(
                 ctx.self,
-                Seq(Swap(request.teamMember, Team(ctx.self.path.name), Team(request.to.path.name))),
+                Seq(Move(request.teamMember, Team(ctx.self.path.name), Team(request.to.path.name))),
                 replyTo
               )
             )
@@ -88,7 +85,7 @@ object TeamBehavior {
           //On the look for a loop
           openRequests.foreach { request =>
             val swap =
-              Swap(request.teamMember, Team(ctx.self.path.name), Team(request.to.path.name))
+              Move(request.teamMember, Team(ctx.self.path.name), Team(request.to.path.name))
             request.to.tell(Probe(originalTeam, breadcrumbs :+ swap, replyTo))
           }
           Behaviors.same
