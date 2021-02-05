@@ -18,7 +18,7 @@ import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.TeamInfo
 import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.AddMember
 import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.RemoveMember
 
-class TeamHandlerBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike with Matchers {
+class TeamHandlerBehaviorAdminTasksTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike with Matchers {
 
   "TeamBehavior" should "create new teams" in {
     val teamHandlerBehavior = BehaviorTestKit(TeamHandlerBehavior(Map.empty, Map.empty))
