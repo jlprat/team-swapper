@@ -1,24 +1,22 @@
 package io.github.jlprat.teamswapper.behaviors
 
-import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
+import akka.actor.testkit.typed.Effect.Spawned
+import akka.actor.testkit.typed.scaladsl.BehaviorTestKit
+import akka.actor.testkit.typed.scaladsl.TestInbox
 import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior
+import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.AddMember
+import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.CreateTeam
+import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.RemoveMember
+import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.TeamInfo
 import io.github.jlprat.teamswapper.domain.GeneralProtocol.Error
 import io.github.jlprat.teamswapper.domain.GeneralProtocol.OK
 import io.github.jlprat.teamswapper.domain.GeneralProtocol.Response
-
 import io.github.jlprat.teamswapper.domain.Team
 import io.github.jlprat.teamswapper.domain.TeamMember
-import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.CreateTeam
-import akka.actor.testkit.typed.scaladsl.BehaviorTestKit
-import akka.actor.testkit.typed.scaladsl.TestInbox
-import akka.actor.testkit.typed.Effect.Spawned
-import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.TeamInfo
-import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.AddMember
-import io.github.jlprat.teamswapper.behaviors.TeamHandlerBehavior.RemoveMember
 
-class TeamHandlerBehaviorAdminTasksTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike with Matchers {
+class TeamHandlerBehaviorAdminTasksTest extends AnyFlatSpec with Matchers {
 
   "TeamBehavior" should "create new teams" in {
     val teamHandlerBehavior = BehaviorTestKit(TeamHandlerBehavior(Map.empty, Map.empty))

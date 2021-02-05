@@ -5,6 +5,7 @@ import scala.concurrent.duration._
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import io.github.jlprat.teamswapper.behaviors.TeamBehavior.FindSwaps
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RequestChange
 import io.github.jlprat.teamswapper.domain.GeneralProtocol.Error
 import io.github.jlprat.teamswapper.domain.GeneralProtocol.OK
@@ -12,7 +13,6 @@ import io.github.jlprat.teamswapper.domain.GeneralProtocol.Response
 import io.github.jlprat.teamswapper.domain.Move
 import io.github.jlprat.teamswapper.domain.Team
 import io.github.jlprat.teamswapper.domain.TeamMember
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.FindSwaps
 
 object TeamHandlerBehavior {
 
@@ -24,7 +24,6 @@ object TeamHandlerBehavior {
       extends Command
   final case class SwapRequest(
       teamMember: TeamMember,
-      from: Team,
       to: Team,
       replyTo: ActorRef[Response]
   )                                                                  extends Command
@@ -89,17 +88,16 @@ object TeamHandlerBehavior {
             replyTo.tell(Error(s"Team ${team.name} doesn't exist"))
             Behaviors.same
 
-          case SwapRequest(teamMember, from, to, replyTo)
-              if teams.keySet.contains(from) && teams.keySet
-                .contains(to) && members(teamMember) == from =>
-            val fromTeamInfo = teams(from)
+          case SwapRequest(teamMember, to, replyTo)
+              if members.contains(teamMember) && teams.keySet.contains(members(teamMember)) =>
+            val fromTeamInfo = teams(members(teamMember))
             val toTeamInfo   = teams(to)
             fromTeamInfo.ref.tell(RequestChange(teamMember, toTeamInfo.ref, replyTo))
             Behaviors.same
-          case SwapRequest(teamMember, from, to, replyTo) =>
+          case SwapRequest(teamMember, to, replyTo) =>
             replyTo.tell(
               Error(
-                s"Either ${from.name} or ${to.name} do not exist, or ${teamMember.name + " " + teamMember.surname} doesn't belong to ${from.name}"
+                s"Either team ${to.name} do not exist, or ${teamMember.name + " " + teamMember.surname} doesn't belong to any team"
               )
             )
             Behaviors.same
