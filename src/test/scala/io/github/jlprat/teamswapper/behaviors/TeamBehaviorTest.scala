@@ -5,12 +5,9 @@ import scala.concurrent.duration._
 import akka.actor.testkit.typed.scaladsl.LoggingTestKit
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.AddTeamMember
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.Command
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.FindSwaps
-import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RemoveTeamMember
 import io.github.jlprat.teamswapper.behaviors.TeamBehavior.RequestChange
-import io.github.jlprat.teamswapper.domain.GeneralProtocol.Error
 import io.github.jlprat.teamswapper.domain.GeneralProtocol.OK
 import io.github.jlprat.teamswapper.domain.GeneralProtocol.Response
 import io.github.jlprat.teamswapper.domain.Move
@@ -21,70 +18,9 @@ import org.scalatest.matchers.should.Matchers
 
 class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike with Matchers {
 
-  "TeamBehavior" should "add people in team if enough places" in {
-    val teamBehavior = testKit.spawn(TeamBehavior(2))
-    val probe        = testKit.createTestProbe[Response]()
-    val alice        = TeamMember("Alice", "Abbot")
-    val bob          = TeamMember("Bob", "Burger")
-
-    teamBehavior.tell(AddTeamMember(alice, probe.ref))
-    probe.expectMessage(OK)
-
-    teamBehavior.tell(AddTeamMember(bob, probe.ref))
-    probe.expectMessage(OK)
-
-    testKit.stop(teamBehavior)
-  }
-  it should "behave in idempotent manner if adding a person who is already a team member" in {
-
-    val alice        = TeamMember("Alice", "Abbot")
-    val teamBehavior = testKit.spawn(TeamBehavior(2, Set(alice)))
-    val probe        = testKit.createTestProbe[Response]()
-
-    teamBehavior.tell(AddTeamMember(alice, probe.ref))
-    probe.expectMessage(OK)
-
-    testKit.stop(teamBehavior)
-  }
-
-  it should "fail to add a team member if the team is full" in {
-    val alice        = TeamMember("Alice", "Abbot")
-    val bob          = TeamMember("Bob", "Burger")
-    val teamBehavior = testKit.spawn(TeamBehavior(1, Set(alice)))
-    val probe        = testKit.createTestProbe[Response]()
-
-    teamBehavior.tell(AddTeamMember(bob, probe.ref))
-    probe.expectMessage(Error("Team is already full, can't add Bob"))
-
-    testKit.stop(teamBehavior)
-  }
-
-  it should "be able to remove team members" in {
-    val alice        = TeamMember("Alice", "Abbot")
-    val teamBehavior = testKit.spawn(TeamBehavior(2, Set(alice)))
-    val probe        = testKit.createTestProbe[Response]()
-
-    teamBehavior.tell(RemoveTeamMember(alice, probe.ref))
-    probe.expectMessage(OK)
-
-    testKit.stop(teamBehavior)
-  }
-
-  it should "fail to remove a non existing team member" in {
-    val alice        = TeamMember("Alice", "Abbot")
-    val bob          = TeamMember("Bob", "Burger")
-    val teamBehavior = testKit.spawn(TeamBehavior(1, Set(alice)))
-    val probe        = testKit.createTestProbe[Response]()
-
-    teamBehavior.tell(RemoveTeamMember(bob, probe.ref))
-    probe.expectMessage(Error("Can't remove Bob from team, because is not part of the team"))
-
-    testKit.stop(teamBehavior)
-  }
-
-  it should "register team change requests for team members" in {
+  "TeamBehavior" should "register team change requests for team members" in {
     val alice = TeamMember("Alice", "Abbot")
-    val teamA = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
+    val teamA = testKit.spawn(TeamBehavior(), "Team-A")
     val teamB = testKit.createTestProbe[Command]("Team-B")
     val probe = testKit.createTestProbe[Response]()
 
@@ -94,24 +30,11 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     testKit.stop(teamA)
   }
 
-  it should "fail to register a team change request for non team members" in {
-    val alice = TeamMember("Alice", "Abbot")
-    val bob   = TeamMember("Bob", "Burger")
-    val teamA = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
-    val teamB = testKit.createTestProbe[Command]("Team-B")
-    val probe = testKit.createTestProbe[Response]()
-
-    teamA.tell(RequestChange(bob, teamB.ref, probe.ref))
-    probe.expectMessage(Error("Can't register request change as Bob is not part of the team"))
-
-    testKit.stop(teamA)
-  }
-
   it should "find a simple 2-team swap" in {
     val alice         = TeamMember("Alice", "Abbot")
     val bob           = TeamMember("Bob", "Burger")
-    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
-    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
+    val teamABehavior = testKit.spawn(TeamBehavior(), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(), "Team-B")
     val probe         = testKit.createTestProbe[Response]()
     val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
@@ -134,9 +57,9 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val alice         = TeamMember("Alice", "Abbot")
     val bob           = TeamMember("Bob", "Burger")
     val charlie       = TeamMember("Charlie", "Cake")
-    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
-    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
-    val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
+    val teamABehavior = testKit.spawn(TeamBehavior(), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(), "Team-B")
+    val teamCBehavior = testKit.spawn(TeamBehavior(), "Team-C")
     val probe         = testKit.createTestProbe[Response]()
     val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
@@ -172,10 +95,10 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val bob           = TeamMember("Bob", "Burger")
     val charlie       = TeamMember("Charlie", "Cake")
     val dave          = TeamMember("Dave", "Dinner")
-    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
-    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
-    val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
-    val teamDBehavior = testKit.spawn(TeamBehavior(1, Set(dave)), "Team-D")
+    val teamABehavior = testKit.spawn(TeamBehavior(), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(), "Team-B")
+    val teamCBehavior = testKit.spawn(TeamBehavior(), "Team-C")
+    val teamDBehavior = testKit.spawn(TeamBehavior(), "Team-D")
     val probe         = testKit.createTestProbe[Response]()
     val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
@@ -213,9 +136,9 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
     val alice         = TeamMember("Alice", "Abbot")
     val bob           = TeamMember("Bob", "Burger")
     val charlie       = TeamMember("Charlie", "Cake")
-    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
-    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
-    val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
+    val teamABehavior = testKit.spawn(TeamBehavior(), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(), "Team-B")
+    val teamCBehavior = testKit.spawn(TeamBehavior(), "Team-C")
     val probe         = testKit.createTestProbe[Response]()
     val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 
@@ -249,10 +172,9 @@ class TeamBehaviorTest extends ScalaTestWithActorTestKit with AnyFlatSpecLike wi
   it should "not find any swaps if there aren't any" in {
     val alice         = TeamMember("Alice", "Abbot")
     val bob           = TeamMember("Bob", "Burger")
-    val charlie       = TeamMember("Charlie", "Cake")
-    val teamABehavior = testKit.spawn(TeamBehavior(1, Set(alice)), "Team-A")
-    val teamBBehavior = testKit.spawn(TeamBehavior(1, Set(bob)), "Team-B")
-    val teamCBehavior = testKit.spawn(TeamBehavior(1, Set(charlie)), "Team-C")
+    val teamABehavior = testKit.spawn(TeamBehavior(), "Team-A")
+    val teamBBehavior = testKit.spawn(TeamBehavior(), "Team-B")
+    val teamCBehavior = testKit.spawn(TeamBehavior(), "Team-C")
     val probe         = testKit.createTestProbe[Response]()
     val swapProbe     = testKit.createTestProbe[Seq[Move]]()
 

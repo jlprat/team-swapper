@@ -32,43 +32,82 @@ object TeamHandlerBehavior {
   final case class Swap(moves: Seq[Move])                            extends Command
   final case object Timeout                                          extends Command
 
-  def apply(teams: Map[String, ActorRef[TeamBehavior.Command]] = Map.empty): Behavior[Command] =
+  final case class TeamInfo(ref: ActorRef[TeamBehavior.Command], freeSlots: Int)
+
+  def apply(
+      teams: Map[Team, TeamInfo],
+      members: Map[TeamMember, Team]
+  ): Behavior[Command] =
     Behaviors.setup[Command] { ctx =>
       val swapWrapper: ActorRef[Seq[Move]] = ctx.messageAdapter(moves => Swap(moves))
       Behaviors.receive { (ctx, msg) =>
         msg match {
-          case CreateTeam(name, size, replyTo) =>
-            val team = ctx.spawn(TeamBehavior(size), name)
+          case CreateTeam(name, size, replyTo) if !teams.contains(Team(name)) =>
+            val team = ctx.spawn(TeamBehavior(), name)
             replyTo.tell(OK)
-            apply(teams + (name -> team))
-          case AddMember(team, teamMember, replyTo) if teams.keySet.contains(team.name) =>
-            val teamRef = teams(team.name)
-            teamRef.tell(TeamBehavior.AddTeamMember(teamMember, replyTo))
+            apply(teams + (Team(name) -> TeamInfo(team, size)), members)
+          case CreateTeam(name, _, replyTo) =>
+            replyTo.tell(Error(s"Team $name already exists"))
             Behaviors.same
+
+          case AddMember(team, teamMember, replyTo)
+              if members.contains(teamMember) && members(teamMember) == team =>
+            replyTo.tell(OK)
+            Behaviors.same
+          case AddMember(team, teamMember, replyTo)
+              if teams.keySet.contains(team) && teams(team).freeSlots == 0 =>
+            replyTo.tell(Error(s"Team ${team.name} is already full, can't add ${teamMember.name}"))
+            Behaviors.same
+          case AddMember(team, teamMember, replyTo) if teams.keySet.contains(team) =>
+            val teamInfo = teams(team)
+            replyTo.tell(OK)
+            apply(
+              teams + (team         -> teamInfo.copy(freeSlots = teamInfo.freeSlots - 1)),
+              members + (teamMember -> team)
+            )
           case AddMember(team, _, replyTo) =>
             replyTo.tell(Error(s"Team ${team.name} doesn't exist"))
             Behaviors.same
-          case RemoveMember(team, teamMember, replyTo) if teams.keySet.contains(team.name) =>
-            val teamRef = teams(team.name)
-            teamRef.tell(TeamBehavior.RemoveTeamMember(teamMember, replyTo))
+
+          case RemoveMember(team, teamMember, replyTo)
+              if teams.keySet.contains(team) && members
+                .contains(teamMember) && members(teamMember) == team =>
+            val teamInfo = teams(team)
+            replyTo.tell(OK)
+            apply(
+              teams + (team -> teamInfo.copy(freeSlots = teamInfo.freeSlots + 1)),
+              members - teamMember
+            )
+          case RemoveMember(team, teamMember, replyTo)
+              if teams.keySet.contains(team) && (!members
+                .contains(teamMember) || members(teamMember) != team) =>
+            replyTo.tell(
+              Error(s"Can't remove ${teamMember.name} from team, because is not part of the team")
+            )
             Behaviors.same
           case RemoveMember(team, _, replyTo) =>
             replyTo.tell(Error(s"Team ${team.name} doesn't exist"))
             Behaviors.same
+
           case SwapRequest(teamMember, from, to, replyTo)
-              if teams.keySet.contains(from.name) && teams.keySet.contains(to.name) =>
-            val fromRef = teams(from.name)
-            val toRef   = teams(to.name)
-            fromRef.tell(RequestChange(teamMember, toRef, replyTo))
+              if teams.keySet.contains(from) && teams.keySet
+                .contains(to) && members(teamMember) == from =>
+            val fromTeamInfo = teams(from)
+            val toTeamInfo   = teams(to)
+            fromTeamInfo.ref.tell(RequestChange(teamMember, toTeamInfo.ref, replyTo))
             Behaviors.same
-          case SwapRequest(_, from, to, replyTo) =>
-            replyTo.tell(Error(s"Either ${from.name} or ${to.name} do not exist"))
+          case SwapRequest(teamMember, from, to, replyTo) =>
+            replyTo.tell(
+              Error(
+                s"Either ${from.name} or ${to.name} do not exist, or ${teamMember.name + " " + teamMember.surname} doesn't belong to ${from.name}"
+              )
+            )
             Behaviors.same
           case CalculateSwaps(replyTo) =>
             teams.values.foreach { team =>
-              team.tell(FindSwaps(swapWrapper))
+              team.ref.tell(FindSwaps(swapWrapper))
             }
-            waitingForSwaps(teams, replyTo, Set.empty)
+            waitingForSwaps(teams, members, replyTo, Set.empty)
           case Swap(_) =>
             ctx.log.error("Received Swap messages on the wrong state, it was too late")
             Behaviors.same
@@ -78,7 +117,8 @@ object TeamHandlerBehavior {
     }
 
   def waitingForSwaps(
-      teams: Map[String, ActorRef[TeamBehavior.Command]] = Map.empty,
+      teams: Map[Team, TeamInfo],
+      members: Map[TeamMember, Team],
       replyTo: ActorRef[Set[Seq[Move]]],
       allMoves: Set[Seq[Move]] = Set.empty
   ): Behavior[Command] =
@@ -88,9 +128,9 @@ object TeamHandlerBehavior {
         Behaviors.receiveMessage {
           case Timeout =>
             replyTo.tell(allMoves)
-            buffer.unstashAll(apply(teams))
+            buffer.unstashAll(apply(teams, members))
           case Swap(moves) =>
-            waitingForSwaps(teams, replyTo, allMoves + moves)
+            waitingForSwaps(teams, members, replyTo, allMoves + moves)
           case msg =>
             buffer.stash(msg)
             Behaviors.same

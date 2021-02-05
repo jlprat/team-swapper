@@ -12,10 +12,6 @@ import io.github.jlprat.teamswapper.domain.GeneralProtocol._
 object TeamBehavior {
 
   sealed trait Command
-  final case class AddTeamMember(teamMember: TeamMember, replyTo: ActorRef[Response])
-      extends Command
-  final case class RemoveTeamMember(teamMember: TeamMember, replyTo: ActorRef[Response])
-      extends Command
   final case class RequestChange(
       teamMember: TeamMember,
       to: ActorRef[Command],
@@ -31,35 +27,13 @@ object TeamBehavior {
   final case class Request(teamMember: TeamMember, to: ActorRef[Command])
 
   def apply(
-      size: Int,
-      teamMembers: Set[TeamMember] = Set.empty,
       openRequests: Set[Request] = Set.empty
   ): Behavior[Command] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
-        case AddTeamMember(teamMember, replyTo) if size > teamMembers.size =>
+        case RequestChange(teamMember, to, replyTo) =>
           replyTo.tell(OK)
-          apply(size, teamMembers + teamMember, openRequests)
-        case AddTeamMember(teamMember, replyTo) =>
-          ctx.log.error("Team is full!")
-          replyTo.tell(Error(s"Team is already full, can't add ${teamMember.name}"))
-          Behaviors.same
-        case RemoveTeamMember(teamMember, replyTo) if teamMembers.contains(teamMember) =>
-          replyTo.tell(OK)
-          apply(size, teamMembers - teamMember, openRequests.filter(_.teamMember != teamMember))
-        case RemoveTeamMember(teamMember, replyTo) =>
-          replyTo.tell(
-            Error(s"Can't remove ${teamMember.name} from team, because is not part of the team")
-          )
-          Behaviors.same
-        case RequestChange(teamMember, to, replyTo) if teamMembers.contains(teamMember) =>
-          replyTo.tell(OK)
-          apply(size, teamMembers, openRequests + Request(teamMember, to))
-        case RequestChange(teamMember, _, replyTo) =>
-          replyTo.tell(
-            Error(s"Can't register request change as ${teamMember.name} is not part of the team")
-          )
-          Behaviors.same
+          apply(openRequests + Request(teamMember, to))
         case FindSwaps(replyTo) =>
           //The idea is to send probes to our contacts,
           //and if the Probe comes back to us, we found a potential swap
